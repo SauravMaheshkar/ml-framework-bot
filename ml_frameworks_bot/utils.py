@@ -3,6 +3,7 @@ import os
 from typing import Any, Callable, Dict, List, Literal, Optional
 
 import weave
+import torch
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
@@ -101,3 +102,14 @@ def get_structured_output_from_completion(
     return response_format.model_validate(
         json.loads(completion.choices[0].message.content)
     )
+
+
+def get_torch_backend():
+    if torch.cuda.is_available():
+        if torch.backends.cuda.is_built():
+            return "cuda"
+    if torch.backends.mps.is_available():
+        if torch.backends.mps.is_built():
+            return "mps"
+        return "cpu"
+    return "cpu"
