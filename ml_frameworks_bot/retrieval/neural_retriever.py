@@ -1,18 +1,17 @@
+import json
 import os
 from typing import Optional
 
+import safetensors
 import torch
 import wandb
 import weave
-import safetensors
-from sentence_transformers import SentenceTransformer
 from rich.progress import track
-
-from ..utils import get_torch_backend
-
+from sentence_transformers import SentenceTransformer
 
 from ..utils import (
     get_all_file_paths,
+    get_torch_backend,
     get_wandb_artifact,
     upload_file_as_artifact,
 )
@@ -34,13 +33,20 @@ class NeuralRetreiver(weave.Model):
     _model: Optional[SentenceTransformer] = None
     _vector_index: Optional[torch.Tensor] = None
 
-    def model_post_init(self, __context):
+    def __init__(
+        self,
+        framework: str,
+        embedding_model_name: str,
+        vector_index: Optional[torch.Tensor] = None,
+    ):
+        super().__init__(framework=framework, embedding_model_name=embedding_model_name)
         self._model = SentenceTransformer(
             self.model_name,
             trust_remote_code=True,
             model_kwargs={"torch_dtype": torch.float16},
             device=get_torch_backend(),
         )
+        self._vector_index = vector_index
 
     def add_end_of_sequence_tokens(self, input_examples):
         input_examples = [
@@ -158,3 +164,24 @@ class NeuralRetreiver(weave.Model):
                 )
 
             return self._vector_index
+
+    @classmethod
+    def from_wandb_artifact(cls, artifact_address: str) -> "NeuralRetreiver":
+        artifact_dir, metadata = get_wandb_artifact(
+            artifact_name=artifact_address,
+            artifact_type="vector_index",
+            get_metadata=True,
+        )
+        with safetensors.torch.safe_open(
+            os.path.join(artifact_dir, "vector_index.safetensors"), framework="pt"
+        ) as f:
+            vector_index = f.get("vector_index")
+        device = torch.device(get_torch_backend())
+        vector_index = vector_index.to(device)
+        with open(os.path.join(artifact_dir, "config.json"), "r") as config_file:
+            metadata = json.load(config_file)
+        return cls(
+            framework=metadata.get("framework"),
+            embedding_model_name=metadata.get("embedding_model_name"),
+            vector_index=vector_index,
+        )
