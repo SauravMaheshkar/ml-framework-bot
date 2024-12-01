@@ -4,6 +4,7 @@ from typing import Optional
 
 import safetensors
 import torch
+import torch.nn.functional as F
 import wandb
 import weave
 from rich.progress import track
@@ -27,19 +28,75 @@ def split_by_separator(
             return [{"file_path": file_path, "text": text} for text in texts]
 
 
+def load_documents(
+    self, repository_local_path: Optional[str] = None
+) -> list[dict[str, str]]:
+    if repository_local_path is None:
+        repository_local_path = get_wandb_artifact(
+            artifact_name=RepositoryMapping[self.framework]["artifact_address"],
+            artifact_type="docs",
+        )
+
+    # Determine which files to index
+    input_files = []
+    for directory in FrameworkParams[self.framework]["included_directories"]:
+        input_files += get_all_file_paths(
+            directory=os.path.join(repository_local_path, directory),
+            included_file_extensions=FrameworkParams[self.framework][
+                "included_file_extensions"
+            ],
+        )
+
+    documents = []
+    for file_path in track(input_files, description="Loading documents"):
+        # Exclude files with certain postfixes
+        exclude_file = False
+        if "exclude_file_postfixes" in FrameworkParams[self.framework]:
+            for exclusion in FrameworkParams[self.framework]["exclude_file_postfixes"]:
+                if file_path.endswith(exclusion):
+                    exclude_file = True
+                    break
+
+        if not exclude_file:
+            with open(file_path, "r") as file:
+                text = file.read()
+
+            if FrameworkParams[self.framework]["chunk_on_separator"]:
+                documents.extend(
+                    split_by_separator(
+                        split_pattern=FrameworkParams[self.framework]["split_pattern"],
+                        file_path=file_path,
+                        text=text,
+                    )
+                )
+            else:
+                documents.append(
+                    {
+                        "file_path": file_path.replace(repository_local_path + "/", ""),
+                        "text": text,
+                    }
+                )
+    return documents
+
+
 class NeuralRetreiver(weave.Model):
     framework: str
     embedding_model_name: str
+    repository_local_path: Optional[str]
     _model: Optional[SentenceTransformer] = None
     _vector_index: Optional[torch.Tensor] = None
+    _documents: Optional[list[dict[str, str]]] = None
 
     def __init__(
         self,
         framework: str,
         embedding_model_name: str,
+        repository_local_path: Optional[str] = None,
         vector_index: Optional[torch.Tensor] = None,
+        documents: Optional[list[dict[str, str]]] = None,
     ):
         super().__init__(framework=framework, embedding_model_name=embedding_model_name)
+        self.repository_local_path = repository_local_path
         self._model = SentenceTransformer(
             self.model_name,
             trust_remote_code=True,
@@ -47,6 +104,9 @@ class NeuralRetreiver(weave.Model):
             device=get_torch_backend(),
         )
         self._vector_index = vector_index
+        self._documents = documents or load_documents(
+            repository_local_path=repository_local_path
+        )
 
     def add_end_of_sequence_tokens(self, input_examples):
         input_examples = [
@@ -54,62 +114,6 @@ class NeuralRetreiver(weave.Model):
             for input_example in input_examples
         ]
         return input_examples
-
-    def load_documents(self) -> list[dict[str, str]]:
-        # Load documents if not available locally
-        if self.repository_local_path is None:
-            self.repository_local_path = get_wandb_artifact(
-                artifact_name=RepositoryMapping[self.framework]["artifact_address"],
-                artifact_type="docs",
-            )
-
-        # Determine which files to index
-        input_files = []
-        for directory in FrameworkParams[self.framework]["included_directories"]:
-            input_files += get_all_file_paths(
-                directory=os.path.join(self.repository_local_path, directory),
-                included_file_extensions=FrameworkParams[self.framework][
-                    "included_file_extensions"
-                ],
-            )
-
-        # Create nodes
-        documents = []
-        for file_path in track(input_files, description="Loading documents"):
-            # Exclude files with certain postfixes
-            exclude_file = False
-            if "exclude_file_postfixes" in FrameworkParams[self.framework]:
-                for exclusion in FrameworkParams[self.framework][
-                    "exclude_file_postfixes"
-                ]:
-                    if file_path.endswith(exclusion):
-                        exclude_file = True
-                        break
-
-            if not exclude_file:
-                with open(file_path, "r") as file:
-                    text = file.read()
-
-                if FrameworkParams[self.framework]["chunk_on_separator"]:
-                    documents.extend(
-                        split_by_separator(
-                            split_pattern=FrameworkParams[self.framework][
-                                "split_pattern"
-                            ],
-                            file_path=file_path,
-                            text=text,
-                        )
-                    )
-                else:
-                    documents.append(
-                        {
-                            "file_path": file_path.replace(
-                                self.repository_local_path + "/", ""
-                            ),
-                            "text": text,
-                        }
-                    )
-        return documents
 
     def index_documents(
         self,
@@ -120,14 +124,12 @@ class NeuralRetreiver(weave.Model):
         artifact_aliases: Optional[list[str]] = [],
     ) -> torch.Tensor:
         if self.repository_local_path is not None:
-            documents = self.load_documents()
-
             vector_indices = []
             for idx in track(
-                range(0, len(documents), batch_size),
+                range(0, len(self._documents), batch_size),
                 description=f"Encoding documents using {self.embedding_model_name}",
             ):
-                batch = documents[idx : idx + batch_size]
+                batch = self._documents[idx : idx + batch_size]
                 batch_embeddings = self._model.encode(
                     self.add_end_of_sequence_tokens(batch),
                     batch_size=len(batch),
@@ -166,7 +168,11 @@ class NeuralRetreiver(weave.Model):
             return self._vector_index
 
     @classmethod
-    def from_wandb_artifact(cls, artifact_address: str) -> "NeuralRetreiver":
+    def from_wandb_artifact(
+        cls,
+        artifact_address: str,
+        repository_local_path: Optional[str] = None,
+    ) -> "NeuralRetreiver":
         artifact_dir, metadata = get_wandb_artifact(
             artifact_name=artifact_address,
             artifact_type="vector_index",
@@ -184,4 +190,30 @@ class NeuralRetreiver(weave.Model):
             framework=metadata.get("framework"),
             embedding_model_name=metadata.get("embedding_model_name"),
             vector_index=vector_index,
+            documents=load_documents(repository_local_path=repository_local_path),
         )
+
+    @weave.op()
+    def predict(self, query: list[str], top_k: int = 2) -> list[dict[str, str]]:
+        device = torch.device(get_torch_backend())
+        with torch.no_grad():
+            query_embedding = self._model.encode(
+                self.add_end_of_sequence_tokens(query),
+                normalize_embeddings=True,
+            )
+            query_embedding = torch.from_numpy(query_embedding).to(device)
+            scores = (
+                F.cosine_similarity(query_embedding, self._vector_index)
+                .cpu()
+                .numpy()
+                .tolist()
+            )
+        retrieved_chunks = []
+        for score in scores:
+            retrieved_chunks.append(
+                {
+                    **self._documents[score["original_index"]],
+                    "score": score["item"],
+                }
+            )
+        return retrieved_chunks
