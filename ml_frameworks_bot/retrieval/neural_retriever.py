@@ -5,10 +5,11 @@ from typing import Optional
 import safetensors
 import torch
 import torch.nn.functional as F
-import wandb
 import weave
 from rich.progress import track
 from sentence_transformers import SentenceTransformer
+
+import wandb
 
 from ..utils import (
     get_all_file_paths,
@@ -29,20 +30,20 @@ def split_by_separator(
 
 
 def load_documents(
-    self, repository_local_path: Optional[str] = None
+    framework: str, repository_local_path: Optional[str] = None
 ) -> list[dict[str, str]]:
     if repository_local_path is None:
         repository_local_path = get_wandb_artifact(
-            artifact_name=RepositoryMapping[self.framework]["artifact_address"],
+            artifact_name=RepositoryMapping[framework]["artifact_address"],
             artifact_type="docs",
         )
 
     # Determine which files to index
     input_files = []
-    for directory in FrameworkParams[self.framework]["included_directories"]:
+    for directory in FrameworkParams[framework]["included_directories"]:
         input_files += get_all_file_paths(
             directory=os.path.join(repository_local_path, directory),
-            included_file_extensions=FrameworkParams[self.framework][
+            included_file_extensions=FrameworkParams[framework][
                 "included_file_extensions"
             ],
         )
@@ -51,8 +52,8 @@ def load_documents(
     for file_path in track(input_files, description="Loading documents"):
         # Exclude files with certain postfixes
         exclude_file = False
-        if "exclude_file_postfixes" in FrameworkParams[self.framework]:
-            for exclusion in FrameworkParams[self.framework]["exclude_file_postfixes"]:
+        if "exclude_file_postfixes" in FrameworkParams[framework]:
+            for exclusion in FrameworkParams[framework]["exclude_file_postfixes"]:
                 if file_path.endswith(exclusion):
                     exclude_file = True
                     break
@@ -61,10 +62,10 @@ def load_documents(
             with open(file_path, "r") as file:
                 text = file.read()
 
-            if FrameworkParams[self.framework]["chunk_on_separator"]:
+            if FrameworkParams[framework]["chunk_on_separator"]:
                 documents.extend(
                     split_by_separator(
-                        split_pattern=FrameworkParams[self.framework]["split_pattern"],
+                        split_pattern=FrameworkParams[framework]["split_pattern"],
                         file_path=file_path,
                         text=text,
                     )
@@ -82,7 +83,7 @@ def load_documents(
 class NeuralRetreiver(weave.Model):
     framework: str
     embedding_model_name: str
-    repository_local_path: Optional[str]
+    repository_local_path: Optional[str] = None
     _model: Optional[SentenceTransformer] = None
     _vector_index: Optional[torch.Tensor] = None
     _documents: Optional[list[dict[str, str]]] = None
@@ -98,14 +99,14 @@ class NeuralRetreiver(weave.Model):
         super().__init__(framework=framework, embedding_model_name=embedding_model_name)
         self.repository_local_path = repository_local_path
         self._model = SentenceTransformer(
-            self.model_name,
+            self.embedding_model_name,
             trust_remote_code=True,
             model_kwargs={"torch_dtype": torch.float16},
             device=get_torch_backend(),
         )
         self._vector_index = vector_index
         self._documents = documents or load_documents(
-            repository_local_path=repository_local_path
+            framework=framework, repository_local_path=repository_local_path
         )
 
     def add_end_of_sequence_tokens(self, input_examples):
@@ -131,7 +132,7 @@ class NeuralRetreiver(weave.Model):
             ):
                 batch = self._documents[idx : idx + batch_size]
                 batch_embeddings = self._model.encode(
-                    self.add_end_of_sequence_tokens(batch),
+                    batch,
                     batch_size=len(batch),
                     normalize_embeddings=normalize_embeddings,
                 )
@@ -141,6 +142,7 @@ class NeuralRetreiver(weave.Model):
             self._vector_index = self._vector_index.detach().cpu()
 
             if vector_index_persist_dir is not None:
+                os.makedirs(vector_index_persist_dir, exist_ok=True)
                 safetensors.torch.save_file(
                     {"vector_index": self._vector_index.cpu()},
                     os.path.join(vector_index_persist_dir, "vector_index.safetensors"),
@@ -156,7 +158,6 @@ class NeuralRetreiver(weave.Model):
                     artifact_metadata={
                         "framework": self.framework,
                         "embedding_model_name": self.embedding_model_name,
-                        "torch_dtype": self.torch_dtype,
                         **{
                             key: FrameworkParams[self.framework][key]
                             for key in FrameworkParams[self.framework]
@@ -190,7 +191,10 @@ class NeuralRetreiver(weave.Model):
             framework=metadata.get("framework"),
             embedding_model_name=metadata.get("embedding_model_name"),
             vector_index=vector_index,
-            documents=load_documents(repository_local_path=repository_local_path),
+            documents=load_documents(
+                framework=metadata.get("framework"),
+                repository_local_path=repository_local_path,
+            ),
         )
 
     @weave.op()

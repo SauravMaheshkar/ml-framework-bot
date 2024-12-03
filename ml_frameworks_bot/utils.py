@@ -2,8 +2,8 @@ import json
 import os
 from typing import Any, Callable, Dict, List, Literal, Optional
 
-import weave
 import torch
+import weave
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
@@ -92,7 +92,12 @@ def upload_file_as_artifact(
             type="vector_index",
             metadata=artifact_metadata,
         )
-        artifact.add_dir(local_path=path)
+        if os.path.isdir(path):
+            artifact.add_dir(local_path=path)
+        elif os.path.isfile(path):
+            artifact.add_file(local_path=path)
+        else:
+            raise ValueError(f"Path {path} is not a valid file or directory")
         wandb.log_artifact(artifact, aliases=artifact_aliases)
 
 
