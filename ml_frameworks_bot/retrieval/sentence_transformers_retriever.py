@@ -5,15 +5,16 @@ from typing import Optional
 import safetensors
 import torch
 import torch.nn.functional as F
-import wandb
 import weave
 from rich.progress import track
 from sentence_transformers import SentenceTransformer
 
+import wandb
+
 from ..utils import (
     get_torch_backend,
     get_wandb_artifact,
-    upload_file_as_artifact,
+    upload_as_artifact,
 )
 from .common import FrameworkParams, load_documents
 
@@ -88,7 +89,7 @@ class SentenceTransformerRetriever(weave.Model):
                 assert (
                     wandb.run is not None
                 ), "Attempted to log artifact without wandb run"
-                upload_file_as_artifact(
+                upload_as_artifact(
                     path=os.path.join(
                         vector_index_persist_dir, "vector_index.safetensors"
                     ),

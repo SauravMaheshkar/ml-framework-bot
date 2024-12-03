@@ -3,12 +3,13 @@ from typing import Optional
 
 import safetensors
 import torch
-import wandb
 import weave
 from rich.progress import track
 from transformers import AutoModel, AutoTokenizer
 
-from ..utils import get_torch_backend, upload_file_as_artifact
+import wandb
+
+from ..utils import get_torch_backend, upload_as_artifact
 from .common import FrameworkParams, load_documents
 
 
@@ -77,7 +78,7 @@ class CodeT5Retriever(weave.Model):
                 assert (
                     wandb.run is not None
                 ), "Attempted to log artifact without wandb run"
-                upload_file_as_artifact(
+                upload_as_artifact(
                     path=os.path.join(
                         vector_index_persist_dir, "vector_index.safetensors"
                     ),

@@ -80,7 +80,7 @@ def get_wandb_artifact(
     return artifact_dir
 
 
-def upload_file_as_artifact(
+def upload_as_artifact(
     path: str,
     artifact_name: str,
     artifact_metadata: Optional[Dict[str, Any]] = {},
