@@ -8,7 +8,6 @@ Things to change depending on your use case:
 * name of the artifact to be used while uploading the artifacts
 """
 
-import torch
 import weave
 from dotenv import load_dotenv
 
@@ -26,7 +25,6 @@ weave.init("ml-colabs/ml-frameworks-bot")
 retriever = NeuralRetreiver(
     framework="mlx",
     embedding_model_name="BAAI/bge-small-en-v1.5",
-    torch_dtype=torch.float16,
     repository_local_path="artifacts/mlx-docs:v0",
 )
 vector_index = retriever.index_documents(
