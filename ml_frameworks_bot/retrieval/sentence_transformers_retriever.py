@@ -44,8 +44,12 @@ class SentenceTransformerRetriever(weave.Model):
             device=get_torch_backend(),
         )
         self._vector_index = vector_index
-        self._documents = documents or load_documents(
-            framework=framework, repository_local_path=repository_local_path
+        self._documents = (
+            load_documents(
+                framework=framework, repository_local_path=repository_local_path
+            )
+            if documents is None
+            else documents
         )
 
     def add_end_of_sequence_tokens(self, input_examples):

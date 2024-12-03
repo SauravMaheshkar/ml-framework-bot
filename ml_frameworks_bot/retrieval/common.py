@@ -55,9 +55,10 @@ def split_by_separator(
     split_pattern: list[tuple[str, str]], file_path: str, text: str
 ) -> list[dict[str, str]]:
     for pattern in split_pattern:
-        if file_path.contains(pattern[0]):
+        if pattern[0] in file_path:
             texts = text.split(pattern[1])
             return [{"file_path": file_path, "text": text} for text in texts]
+    return []
 
 
 def load_documents(

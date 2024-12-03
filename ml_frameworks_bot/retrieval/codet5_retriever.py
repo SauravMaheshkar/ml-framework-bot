@@ -44,8 +44,12 @@ class CodeT5Retriever(weave.Model):
             self.embedding_model_name, trust_remote_code=True
         )
         self._vector_index = vector_index
-        self._documents = documents or load_documents(
-            framework=framework, repository_local_path=repository_local_path
+        self._documents = (
+            load_documents(
+                framework=framework, repository_local_path=repository_local_path
+            )
+            if documents is None
+            else documents
         )
 
     def index_documents(
@@ -57,6 +61,8 @@ class CodeT5Retriever(weave.Model):
     ) -> torch.Tensor:
         if self.repository_local_path is not None:
             vector_indices = []
+            self._model = self._model.to(self.device)
+
             with torch.no_grad():
                 for idx in track(
                     range(0, len(self._documents), batch_size),
@@ -64,15 +70,19 @@ class CodeT5Retriever(weave.Model):
                 ):
                     batch = self._documents[idx : idx + batch_size]
                     inputs = self._tokenizer(
-                        batch, padding=True, truncation=True, return_tensors="pt"
-                    ).to(self.device)
-                    vector_indices.append(self._model(inputs)[0])
+                        [doc["text"] for doc in batch],
+                        padding=True,
+                        truncation=True,
+                        return_tensors="pt",
+                    )
+                    inputs = {k: v.to(self.device) for k, v in inputs.items()}
+                    vector_indices.append(self._model(**inputs)[0])
             vector_indices = torch.cat(vector_indices, dim=0).detach().cpu()
 
             if vector_index_persist_dir is not None:
                 os.makedirs(vector_index_persist_dir, exist_ok=True)
                 safetensors.torch.save_file(
-                    {"vector_index": self._vector_index.cpu()},
+                    {"vector_index": vector_indices},
                     os.path.join(vector_index_persist_dir, "vector_index.safetensors"),
                 )
                 assert (
@@ -94,4 +104,6 @@ class CodeT5Retriever(weave.Model):
                     artifact_aliases=artifact_aliases,
                 )
 
-            return self._vector_index
+            self._vector_index = vector_indices
+
+            return vector_indices
