@@ -80,7 +80,7 @@ def load_documents(
     return documents
 
 
-class NeuralRetreiver(weave.Model):
+class SentenceTransformerRetriever(weave.Model):
     framework: str
     embedding_model_name: str
     repository_local_path: Optional[str] = None

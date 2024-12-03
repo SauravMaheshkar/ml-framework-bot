@@ -1,8 +1,8 @@
 from .heuristic_retriever import HeuristicRetreiver
-from .neural_retriever import NeuralRetreiver
+from .sentence_transformers_retriever import SentenceTransformerRetriever
 
 
 __all__ = [
     "HeuristicRetreiver",
-    "NeuralRetreiver",
+    "SentenceTransformerRetriever",
 ]
