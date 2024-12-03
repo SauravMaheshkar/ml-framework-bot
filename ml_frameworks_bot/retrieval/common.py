@@ -40,7 +40,6 @@ FrameworkParams: Dict[str, Dict[str, Any]] = {
         "chunk_on_separator": True,
         "split_pattern": [("ops", "----")],
         "included_directories": ["sources/api"],
-        "exclude_file_postfixes": ["index.md"],
         "included_file_extensions": [".md"],
     },
     "mlx": {
@@ -49,16 +48,6 @@ FrameworkParams: Dict[str, Dict[str, Any]] = {
         "included_file_extensions": [".txt"],
     },
 }
-
-
-def split_by_separator(
-    split_pattern: list[tuple[str, str]], file_path: str, text: str
-) -> list[dict[str, str]]:
-    for pattern in split_pattern:
-        if pattern[0] in file_path:
-            texts = text.split(pattern[1])
-            return [{"file_path": file_path, "text": text} for text in texts]
-    return []
 
 
 def load_documents(
@@ -95,18 +84,18 @@ def load_documents(
                 text = file.read()
 
             if FrameworkParams[framework]["chunk_on_separator"]:
-                documents.extend(
-                    split_by_separator(
-                        split_pattern=FrameworkParams[framework]["split_pattern"],
-                        file_path=file_path,
-                        text=text,
-                    )
-                )
-            else:
-                documents.append(
-                    {
-                        "file_path": file_path.replace(repository_local_path + "/", ""),
-                        "text": text,
-                    }
-                )
+                for pattern in FrameworkParams[framework]["split_pattern"]:
+                    if pattern[0] in file_path:
+                        texts = text.split(pattern[1])
+                        element = [
+                            {"file_path": file_path, "text": text} for text in texts
+                        ]
+                        documents.extend(element)
+            documents.append(
+                {
+                    "file_path": file_path.replace(repository_local_path + "/", ""),
+                    "text": text,
+                }
+            )
+
     return documents
