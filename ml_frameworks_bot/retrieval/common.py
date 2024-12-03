@@ -99,3 +99,12 @@ def load_documents(
             )
 
     return documents
+
+
+def argsort_scores(scores: list[float], descending: bool = False):
+    return [
+        {"item": item, "original_index": idx}
+        for idx, item in sorted(
+            list(enumerate(scores)), key=lambda x: x[1], reverse=descending
+        )
+    ]

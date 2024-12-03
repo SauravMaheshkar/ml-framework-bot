@@ -1,4 +1,3 @@
-import json
 import os
 from typing import Optional
 
@@ -128,8 +127,6 @@ class SentenceTransformerRetriever(weave.Model):
             vector_index = f.get("vector_index")
         device = torch.device(get_torch_backend())
         vector_index = vector_index.to(device)
-        with open(os.path.join(artifact_dir, "config.json"), "r") as config_file:
-            metadata = json.load(config_file)
         return cls(
             framework=metadata.get("framework"),
             embedding_model_name=metadata.get("embedding_model_name"),
@@ -156,7 +153,7 @@ class SentenceTransformerRetriever(weave.Model):
                 .tolist()
             )
         retrieved_chunks = []
-        for score in scores:
+        for score in scores[:top_k]:
             retrieved_chunks.append(
                 {
                     **self._documents[score["original_index"]],
