@@ -1,4 +1,9 @@
-from typing import Any, Dict
+import os
+from typing import Any, Dict, Optional
+
+from rich.progress import track
+
+from ..utils import get_all_file_paths, get_wandb_artifact
 
 
 RepositoryMapping: Dict[str, Dict[str, str]] = {
@@ -44,3 +49,63 @@ FrameworkParams: Dict[str, Dict[str, Any]] = {
         "included_file_extensions": [".txt"],
     },
 }
+
+
+def split_by_separator(
+    split_pattern: list[tuple[str, str]], file_path: str, text: str
+) -> list[dict[str, str]]:
+    for pattern in split_pattern:
+        if file_path.contains(pattern[0]):
+            texts = text.split(pattern[1])
+            return [{"file_path": file_path, "text": text} for text in texts]
+
+
+def load_documents(
+    framework: str, repository_local_path: Optional[str] = None
+) -> list[dict[str, str]]:
+    if repository_local_path is None:
+        repository_local_path = get_wandb_artifact(
+            artifact_name=RepositoryMapping[framework]["artifact_address"],
+            artifact_type="docs",
+        )
+
+    # Determine which files to index
+    input_files = []
+    for directory in FrameworkParams[framework]["included_directories"]:
+        input_files += get_all_file_paths(
+            directory=os.path.join(repository_local_path, directory),
+            included_file_extensions=FrameworkParams[framework][
+                "included_file_extensions"
+            ],
+        )
+
+    documents = []
+    for file_path in track(input_files, description="Loading documents"):
+        # Exclude files with certain postfixes
+        exclude_file = False
+        if "exclude_file_postfixes" in FrameworkParams[framework]:
+            for exclusion in FrameworkParams[framework]["exclude_file_postfixes"]:
+                if file_path.endswith(exclusion):
+                    exclude_file = True
+                    break
+
+        if not exclude_file:
+            with open(file_path, "r") as file:
+                text = file.read()
+
+            if FrameworkParams[framework]["chunk_on_separator"]:
+                documents.extend(
+                    split_by_separator(
+                        split_pattern=FrameworkParams[framework]["split_pattern"],
+                        file_path=file_path,
+                        text=text,
+                    )
+                )
+            else:
+                documents.append(
+                    {
+                        "file_path": file_path.replace(repository_local_path + "/", ""),
+                        "text": text,
+                    }
+                )
+    return documents

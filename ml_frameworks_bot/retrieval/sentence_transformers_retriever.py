@@ -5,79 +5,17 @@ from typing import Optional
 import safetensors
 import torch
 import torch.nn.functional as F
+import wandb
 import weave
 from rich.progress import track
 from sentence_transformers import SentenceTransformer
 
-import wandb
-
 from ..utils import (
-    get_all_file_paths,
     get_torch_backend,
     get_wandb_artifact,
     upload_file_as_artifact,
 )
-from .common import FrameworkParams, RepositoryMapping
-
-
-def split_by_separator(
-    split_pattern: list[tuple[str, str]], file_path: str, text: str
-) -> list[dict[str, str]]:
-    for pattern in split_pattern:
-        if file_path.contains(pattern[0]):
-            texts = text.split(pattern[1])
-            return [{"file_path": file_path, "text": text} for text in texts]
-
-
-def load_documents(
-    framework: str, repository_local_path: Optional[str] = None
-) -> list[dict[str, str]]:
-    if repository_local_path is None:
-        repository_local_path = get_wandb_artifact(
-            artifact_name=RepositoryMapping[framework]["artifact_address"],
-            artifact_type="docs",
-        )
-
-    # Determine which files to index
-    input_files = []
-    for directory in FrameworkParams[framework]["included_directories"]:
-        input_files += get_all_file_paths(
-            directory=os.path.join(repository_local_path, directory),
-            included_file_extensions=FrameworkParams[framework][
-                "included_file_extensions"
-            ],
-        )
-
-    documents = []
-    for file_path in track(input_files, description="Loading documents"):
-        # Exclude files with certain postfixes
-        exclude_file = False
-        if "exclude_file_postfixes" in FrameworkParams[framework]:
-            for exclusion in FrameworkParams[framework]["exclude_file_postfixes"]:
-                if file_path.endswith(exclusion):
-                    exclude_file = True
-                    break
-
-        if not exclude_file:
-            with open(file_path, "r") as file:
-                text = file.read()
-
-            if FrameworkParams[framework]["chunk_on_separator"]:
-                documents.extend(
-                    split_by_separator(
-                        split_pattern=FrameworkParams[framework]["split_pattern"],
-                        file_path=file_path,
-                        text=text,
-                    )
-                )
-            else:
-                documents.append(
-                    {
-                        "file_path": file_path.replace(repository_local_path + "/", ""),
-                        "text": text,
-                    }
-                )
-    return documents
+from .common import FrameworkParams, load_documents
 
 
 class SentenceTransformerRetriever(weave.Model):
@@ -173,7 +111,7 @@ class SentenceTransformerRetriever(weave.Model):
         cls,
         artifact_address: str,
         repository_local_path: Optional[str] = None,
-    ) -> "NeuralRetreiver":
+    ) -> "SentenceTransformerRetriever":
         artifact_dir, metadata = get_wandb_artifact(
             artifact_name=artifact_address,
             artifact_type="vector_index",
