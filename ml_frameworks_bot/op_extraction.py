@@ -5,12 +5,13 @@ import weave
 from pydantic import BaseModel
 from rich.progress import track
 
-from .retrieval import HeuristicRetreiver, NeuralRetreiver
+from .retrieval import CodeT5Retriever, HeuristicRetreiver, SentenceTransformerRetriever
 from .schema import Operations
 from .utils import get_structured_output_from_completion
 
 
-DocumentationRetreiver = Union[NeuralRetreiver, HeuristicRetreiver]
+NeuralRetriever = Union[CodeT5Retriever, SentenceTransformerRetriever]
+DocumentationRetreiver = Union[NeuralRetriever, HeuristicRetreiver]
 
 
 class OpWithAPIReference(BaseModel):
@@ -61,6 +62,7 @@ Here are some rules:
     are present inside the parent operation.
 4. You should simply return the names of the ops and not the entire statement itself.
 5. Ensure that the names of the ops consist of the entire `{self.api_reference_retriever.framework}` namespace.
+6. If they are keras3 or keras2 operations, you should consider them as keras operations.
                     """,
                 },
                 {
@@ -97,10 +99,7 @@ Here are some rules:
             else iterable
         )
         for op in iterable:
-            is_neural_retriever = isinstance(
-                self.api_reference_retriever, NeuralRetreiver
-            )
-            if is_neural_retriever:
+            if isinstance(self.api_reference_retriever, NeuralRetriever):
                 purpose_of_op = self.ask_llm_about_op(op)
                 api_reference = self.api_reference_retriever.predict(
                     query=f"API reference for `{op}`.\n{purpose_of_op}",
@@ -110,12 +109,8 @@ Here are some rules:
             ops_with_api_reference.append(
                 OpWithAPIReference(
                     op=op,
-                    api_reference=api_reference.text,
-                    api_reference_path=(
-                        api_reference.node.metadata["file_path"]
-                        if is_neural_retriever
-                        else api_reference.metadata["file_path"]
-                    ),
+                    api_reference=api_reference["text"],
+                    api_reference_path=api_reference["file_path"],
                 )
             )
         return ops_with_api_reference

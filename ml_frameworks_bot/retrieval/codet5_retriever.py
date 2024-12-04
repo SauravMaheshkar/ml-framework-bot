@@ -56,7 +56,7 @@ class CodeT5Retriever(weave.Model):
 
     def index_documents(
         self,
-        batch_size: int = 8,
+        batch_size: int = 1,
         vector_index_persist_dir: Optional[str] = None,
         artifact_name: Optional[str] = None,
         artifact_aliases: Optional[list[str]] = [],
@@ -144,7 +144,6 @@ class CodeT5Retriever(weave.Model):
                 return_tensors="pt",
             )
             query_embedding = self._model(**query_inputs)[0]
-            print(query_embedding.shape, self._vector_index.shape)
             scores = (
                 F.cosine_similarity(query_embedding, self._vector_index)
                 .cpu()

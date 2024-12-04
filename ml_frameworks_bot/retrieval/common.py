@@ -41,6 +41,7 @@ FrameworkParams: Dict[str, Dict[str, Any]] = {
         "split_pattern": [("ops", "----")],
         "included_directories": ["sources/api"],
         "included_file_extensions": [".md"],
+        "exclude_file_postfixes": ["index.md"],
     },
     "mlx": {
         "chunk_on_separator": False,
@@ -75,7 +76,7 @@ def load_documents(
         exclude_file = False
         if "exclude_file_postfixes" in FrameworkParams[framework]:
             for exclusion in FrameworkParams[framework]["exclude_file_postfixes"]:
-                if file_path.endswith(exclusion):
+                if exclusion in file_path and "/ops/" not in file_path:
                     exclude_file = True
                     break
 
