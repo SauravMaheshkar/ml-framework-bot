@@ -29,4 +29,4 @@ def test_keras_retriever(
     )
     retrieved_nodes = retriever.predict(query=query)
 
-    assert retrieved_nodes.metadata["file_path"] == expected_path
+    assert retrieved_nodes["file_path"] == expected_path
