@@ -3,7 +3,6 @@ import os
 from typing import Optional, get_args
 
 import weave
-from llama_index.core.schema import BaseNode, TextNode
 
 from ..utils import SupportedFrameworks, get_wandb_artifact
 from .common import RepositoryMapping
@@ -37,19 +36,20 @@ class HeuristicRetreiver(weave.Model):
         else:
             self.repository_local_path = repository_local_path
 
-    def load_doc(self, op: str) -> BaseNode:
+    def load_doc(self, op: str) -> dict[str, str]:
         try:
             with open(
                 os.path.join(self.repository_local_path, self._api_to_doc_mapping[op]),
                 "r",
             ) as file:
                 text = file.read()
-                return TextNode(
-                    text=text, metadata={"file_path": self._api_to_doc_mapping[op]}
-                )
+                return {
+                    "text": text,
+                    "file_path": self._api_to_doc_mapping[op],
+                }
         except KeyError:
             raise KeyError(f"API reference for {op} not found")
 
     @weave.op()
-    def predict(self, query: str) -> BaseNode:
+    def predict(self, query: str) -> dict[str, str]:
         return self.load_doc(op=query)

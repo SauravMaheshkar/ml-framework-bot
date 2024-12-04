@@ -4,9 +4,6 @@ from typing import Any, Callable, Dict, List, Literal, Optional
 
 import torch
 import weave
-from llama_index.core.base.embeddings.base import BaseEmbedding
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.embeddings.openai import OpenAIEmbedding
 from pydantic import BaseModel
 
 import wandb
@@ -33,25 +30,6 @@ def get_all_file_paths(
     recurse_folder(directory)
 
     return file_paths
-
-
-def make_embedding_model(
-    embedding_model_name: str, model_kwargs: Optional[Dict[str, Any]] = {}
-) -> BaseEmbedding:
-    return (
-        OpenAIEmbedding(model_name=embedding_model_name)
-        if embedding_model_name
-        in [
-            "text-embedding-3-small",
-            "text-embedding-3-large",
-            "text-embedding-ada-002",
-        ]
-        else HuggingFaceEmbedding(
-            model_name=embedding_model_name,
-            trust_remote_code=True,
-            model_kwargs=model_kwargs,
-        )
-    )
 
 
 def weave_op_wrapper(name: str) -> Callable[[Callable], Callable]:

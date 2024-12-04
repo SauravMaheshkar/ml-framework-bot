@@ -2,7 +2,6 @@ from typing import Dict, List, Optional, Union
 
 import litellm
 import weave
-from llama_index.core.schema import BaseNode
 from pydantic import BaseModel
 from rich.progress import track
 
@@ -103,11 +102,11 @@ Here are some rules:
             )
             if is_neural_retriever:
                 purpose_of_op = self.ask_llm_about_op(op)
-                api_reference: BaseNode = self.api_reference_retriever.predict(
+                api_reference = self.api_reference_retriever.predict(
                     query=f"API reference for `{op}`.\n{purpose_of_op}",
                 )[0]
             else:
-                api_reference: BaseNode = self.api_reference_retriever.predict(query=op)
+                api_reference = self.api_reference_retriever.predict(query=op)
             ops_with_api_reference.append(
                 OpWithAPIReference(
                     op=op,
