@@ -62,7 +62,7 @@ Here are some rules:
     are present inside the parent operation.
 4. You should simply return the names of the ops and not the entire statement itself.
 5. Ensure that the names of the ops consist of the entire `{self.api_reference_retriever.framework}` namespace.
-6. If they are keras3 or keras2 operations, you should consider them as keras operations.
+6. If they are keras3 or keras2 operations, you must consider them as keras operations within the keras parent operation.
                     """,
                 },
                 {
