@@ -1,9 +1,8 @@
-from typing import get_args
-
 import litellm
 import weave
 
 from .op_extraction import DocumentationRetreiver, OpExtractor
+from .prompts import FRAMEWORK_IDENTIFICATION_PROMPT
 from .retrieval import HeuristicRetreiver
 from .utils import SupportedFrameworks, get_structured_output_from_completion
 
@@ -11,7 +10,6 @@ from .utils import SupportedFrameworks, get_structured_output_from_completion
 class FrameworkIdentificationModel(weave.Model):
     model_name: str
 
-    # ruff: noqa: E501
     @weave.op()
     def predict(self, code_snippet: str) -> str:
         completion = litellm.completion(
@@ -19,17 +17,7 @@ class FrameworkIdentificationModel(weave.Model):
             messages=[
                 {
                     "role": "system",
-                    "content": f"""
-You are an experienced machine learning engineer expert in python,
-and the following frameworks: {", ".join(get_args(SupportedFrameworks.__annotations__["frameworks"]))}.
-You will be provided with a code snippet and you need to identify from the aforementioned
-frameworks the code snippet belongs to. You must follow the following rules:
-1. If keras is imported using `from tensorflow import keras`, then the framework is keras2.
-Also, if tensorflow is imported using `import tensorflow as tf` and then keras is used as
-`tf.keras`, then the framework is keras2.
-2. If keras is imported using `import keras` without it being imported
-from tensorflow, then the framework is keras3.
-                """,
+                    "content": FRAMEWORK_IDENTIFICATION_PROMPT,
                 },
                 {
                     "role": "user",
