@@ -19,7 +19,8 @@ Here are some rules:
     `{framework}` operations. But arguments should not be considered as separate
     `{framework}` operations. Also calling the operation should not be considered
     as a separate operation.
-6. Ensure that the names of the ops consist of the entire `{framework}` namespace,
+6. For `keras` you must also consider `keras.ops` as separate operations.
+7. Ensure that the names of the ops consist of the entire `{framework}` namespace,
     starting with `{framework}`.
 """
 
