@@ -4,7 +4,7 @@ Example Script to generate a vector index and upload it to wandb as an artifact
 Things to change depending on your use case:
 * wandb project and entity
 * framework name
-* retriever to use (CodeT5Retriever or SentenceTransformerRetriever)
+* retriever to use (CodeT5Retriever or HeuristicRetriever)
 * path to the documentation
 * name of the artifact to be used while uploading the artifacts
 """

@@ -3,7 +3,7 @@ Example Script to generate a vector index and upload it to wandb as an artifact
 
 Things to change depending on your use case:
 * weave project where you to want to log the trace
-* retriever to use (CodeT5Retriever or SentenceTransformerRetriever)
+* retriever to use (CodeT5Retriever or HeuristicRetriever)
 * vector index you want to use
 * the query you want to retrieve
 """
