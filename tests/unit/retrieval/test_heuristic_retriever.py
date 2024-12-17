@@ -20,7 +20,7 @@ load_dotenv()
     ],
     ids=["keras3", "mlx"],
 )
-def test_keras_retriever(
+def test_heuristic_retriever(
     framework, repository_local_path, query, expected_path, request
 ):
     retriever = HeuristicRetreiver(
