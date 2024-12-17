@@ -24,7 +24,15 @@ def test_op_extractor_neural_retriever(keras3_docs):
     )
     evaluation = weave.Evaluation(
         dataset=weave.ref("keras_evaluation_dataset:v2").get(),
-        scorers=[DocumentationAgentJudge(repository_local_path=keras3_docs)],
+        scorers=[
+            DocumentationAgentJudge(
+                repository_local_path=keras3_docs,
+                column_map={
+                    "ops": "keras_ops",
+                    "api_reference_path": "keras_api_reference_path",
+                },
+            )
+        ],
     )
     summary = asyncio.run(
         evaluation.evaluate(
@@ -52,7 +60,15 @@ def test_op_extractor_heuristic_retriever(keras3_docs):
     )
     evaluation = weave.Evaluation(
         dataset=weave.ref("keras_evaluation_dataset:v2").get(),
-        scorers=[DocumentationAgentJudge(repository_local_path=keras3_docs)],
+        scorers=[
+            DocumentationAgentJudge(
+                repository_local_path=keras3_docs,
+                column_map={
+                    "ops": "keras_ops",
+                    "api_reference_path": "keras_api_reference_path",
+                },
+            )
+        ],
     )
     summary = asyncio.run(
         evaluation.evaluate(
