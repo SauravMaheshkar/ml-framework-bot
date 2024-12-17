@@ -26,7 +26,11 @@ def test_op_extractor_neural_retriever(keras3_docs):
         dataset=weave.ref("keras_evaluation_dataset:v2").get(),
         scorers=[DocumentationAgentJudge(repository_local_path=keras3_docs)],
     )
-    summary = asyncio.run(evaluation.evaluate(op_extractor))
+    summary = asyncio.run(
+        evaluation.evaluate(
+            op_extractor, __weave={"display_name": "op_extractor_neural_retriever"}
+        )
+    )
     assert (
         summary["DocumentationAgentJudge"]["api_reference_retrieval_accuracy"]["mean"]
         > 0.6
@@ -50,7 +54,11 @@ def test_op_extractor_heuristic_retriever(keras3_docs):
         dataset=weave.ref("keras_evaluation_dataset:v2").get(),
         scorers=[DocumentationAgentJudge(repository_local_path=keras3_docs)],
     )
-    summary = asyncio.run(evaluation.evaluate(op_extractor))
+    summary = asyncio.run(
+        evaluation.evaluate(
+            op_extractor, __weave={"display_name": "op_extractor_heuristic_retriever"}
+        )
+    )
     assert (
         summary["DocumentationAgentJudge"]["api_reference_retrieval_accuracy"]["mean"]
         == 1.0
