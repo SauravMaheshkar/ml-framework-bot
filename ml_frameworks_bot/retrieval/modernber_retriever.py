@@ -4,10 +4,11 @@ from typing import Optional
 import safetensors
 import torch
 import torch.nn.functional as F
-import wandb
 import weave
 from rich.progress import track
 from sentence_transformers import SentenceTransformer
+
+import wandb
 
 from ..utils import get_torch_backend, get_wandb_artifact, upload_as_artifact
 from .common import FrameworkParams, argsort_scores, load_documents
@@ -53,7 +54,9 @@ class ModernBERTRetriever(weave.Model):
 
     def add_end_of_sequence_tokens(self, input_examples):
         input_examples = [
-            input_example + self._model.tokenizer.eos_token
+            input_example["text"]
+            + self._model.tokenizer.added_tokens_decoder[50282].content
+            # Source: https://huggingface.co/docs/transformers/main/en/model_doc/modernbert#transformers.ModernBertConfig.eos_token_id
             for input_example in input_examples
         ]
         return input_examples
@@ -90,9 +93,9 @@ class ModernBERTRetriever(weave.Model):
                     {"vector_index": vector_indices},
                     os.path.join(vector_index_persist_dir, "vector_index.safetensors"),
                 )
-                assert wandb.run is not None, (
-                    "Attempted to log artifact without wandb run"
-                )
+                assert (
+                    wandb.run is not None
+                ), "Attempted to log artifact without wandb run"
                 upload_as_artifact(
                     path=os.path.join(
                         vector_index_persist_dir, "vector_index.safetensors"
