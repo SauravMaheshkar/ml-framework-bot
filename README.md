@@ -13,3 +13,9 @@ uv sync
 ## Usage
 
 For example usage refer to [`examples/`](./examples/)
+
+## Testing
+
+```bash
+uv run pytest -s -v .
+```

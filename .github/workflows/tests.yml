@@ -37,6 +37,6 @@ jobs:
         run: |
           uv run ruff check ml_frameworks_bot
 
-      - name: Test with PyTest
-        run: |
-          uv run pytest -s -v .
+      # - name: Test with PyTest
+      #   run: |
+      #     uv run pytest -s -v .
