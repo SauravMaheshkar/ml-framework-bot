@@ -1,6 +1,6 @@
 from .codet5_retriever import CodeT5Retriever
 from .heuristic_retriever import HeuristicRetreiver
-from .modernber_retriever import ModernBERTRetriever
+from .modernbert_retriever import ModernBERTRetriever
 
 
 __all__ = [

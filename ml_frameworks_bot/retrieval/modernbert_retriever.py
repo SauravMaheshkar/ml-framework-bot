@@ -143,7 +143,7 @@ class ModernBERTRetriever(weave.Model):
     @weave.op()
     def predict(self, query: str, top_k: int = 2) -> list[dict[str, str]]:
         with torch.no_grad():
-            query_inputs = self._tokenizer(
+            query_inputs = self._model.tokenizer(
                 query,
                 return_tensors="pt",
             )
