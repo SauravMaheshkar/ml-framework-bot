@@ -7,6 +7,7 @@ from ml_frameworks_bot.retrieval import HeuristicRetreiver
 load_dotenv()
 
 
+@pytest.mark.ci
 @pytest.mark.parametrize(
     "framework, repository_local_path, query, expected_path",
     [

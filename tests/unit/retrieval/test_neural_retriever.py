@@ -8,6 +8,7 @@ from ml_frameworks_bot.retrieval import CodeT5Retriever
 load_dotenv()
 
 
+@pytest.mark.ci
 @pytest.mark.parametrize(
     "artifact_address, query, expected_path",
     [

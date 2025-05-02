@@ -39,4 +39,4 @@ jobs:
 
       - name: Test with PyTest
         run: |
-          uv run pytest -s -v .
+          uv run pytest -s -v -m "ci" .
