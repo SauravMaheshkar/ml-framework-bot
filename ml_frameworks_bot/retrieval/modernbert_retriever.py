@@ -143,11 +143,13 @@ class ModernBERTRetriever(weave.Model):
     @weave.op()
     def predict(self, query: str, top_k: int = 2) -> list[dict[str, str]]:
         with torch.no_grad():
-            query_inputs = self._model.tokenizer(
-                query,
-                return_tensors="pt",
-            )
-            query_embedding = self._model(**query_inputs)[0]
+            query_embedding = torch.tensor(
+                self._model.encode(
+                    query,
+                    convert_to_tensor=True,
+                    normalize_embeddings=True,
+                )
+            ).cpu()
             scores = (
                 F.cosine_similarity(query_embedding, self._vector_index)
                 .cpu()
