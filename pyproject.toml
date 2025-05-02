@@ -31,6 +31,9 @@ lines-after-imports = 2
 pythonpath = "."
 testpaths = ["tests"]
 filterwarnings = "ignore::DeprecationWarning"
+markers = [
+    "ci: tests to run in CI (select with '-m \"ci\"')",
+]
 
 [tool.uv]
 dev-dependencies = [
